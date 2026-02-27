@@ -4,27 +4,22 @@ import io
 import shutil
 import tempfile
 
+from datetime import datetime
 from typing import Callable
 from pathlib import Path
+from platformdirs import user_downloads_path
 
-from core.launcher import Launcher
-from core.locations import get_modpacks_location
-from config import END_MESSAGE
+from modpack_loader.config import END_MESSAGE
 
 class ModpackUtils:
-    def __init__(self, modpack_info: dict[str, str], status_callback: Callable, launcher_type: str):
+    def __init__(self, modpack_info: dict[str, str], status_callback: Callable):
         self.modpack_info = modpack_info
         self.name = modpack_info.get('name', '')
         self.version = modpack_info.get('version', '')
         self.source = modpack_info.get('source', '')
         self.status = status_callback
-        self.launcher_type = launcher_type
-        try:
-            modpacks_location = get_modpacks_location(self.launcher_type)
-        except RuntimeError as e:
-            self.status(e)
-        else:
-            self.modpack_location = modpacks_location / self.name
+
+        self.downloads = user_downloads_path()
 
         self.modpack_temp = None
         self.modpack_temp_path = None
@@ -47,7 +42,6 @@ class ModpackUtils:
             # Создание временного каталога
             self.modpack_temp = tempfile.TemporaryDirectory()
             self.modpack_temp_path = Path(self.modpack_temp.name)
-            # self.modpack_temp_path = Path('~/downloads/modpack_inst_sprrp_test').expanduser()
 
             # Извлечение содержимого zip во временный каталог
             try:
@@ -58,8 +52,6 @@ class ModpackUtils:
             except OSError as e:
                 self.status(f"Ошибка записи на диск: {e}")
             else:
-                # TODO добавить проверку на отсутствие файлов в self.modpack_content_path
-
                 github_subdir = next(dir for dir in self.modpack_temp_path.iterdir() if dir.is_dir())
                 for item in github_subdir.iterdir():
                     shutil.move(item, self.modpack_temp_path / item.name)
@@ -67,24 +59,16 @@ class ModpackUtils:
                 github_subdir.rmdir()
                 self.status(f"Cборка '{self.name}' успешно скачана и распакована в {self.modpack_temp_path}")
 
-    def _save_version_in_file(self):
-        if self.modpack_temp_path:
-            version_file = self.modpack_temp_path / 'modpack_version'
-            if self.version:
-                version_file.write_text(self.version)
-                self.status('Версия сборки сохранена в файл \'modpack_version\'')
+                shutil.move(self.modpack_temp_path, self.downloads)
+                self.status(f"Cборка '{self.name}' перемещена из {self.modpack_temp_path} в {self.downloads}")
 
-    def _get_version_from_file(self) -> str | None:
-        version_file = self.modpack_location / self.name / 'modpack_version'
-        return version_file.read_text().strip()
+                load_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+                self.downloaded_pack = self.downloads / self.modpack_temp_path.name
 
-    def _is_actual(self) -> bool:
-        installed_version = self._get_version_from_file()
-        # Улучшить механизм проверки версии
-        return True if installed_version == self.version else False
-
-    def _is_installed(self) -> bool:
-        return True if self.modpack_location.exists() else False
+                new_downloaded_pack_path = self.downloads / f"{self.name}-{self.version}-{load_time}"
+                self.downloaded_pack.rename(new_downloaded_pack_path)
+                self.downloaded_pack = new_downloaded_pack_path
+                self.status(f"Cборка '{self.name}' переименована из {self.modpack_temp_path.name} в {self.downloaded_pack.name}")
 
     def _cleanup(self):
         # Очистка временного каталога
@@ -96,30 +80,14 @@ class ModpackUtils:
             self.status('Временный каталог удалён')
             self.status('Очистка завершена')
 
-    def _full_install(self):
+    def _full_download(self):
         self._download_and_extract()
-        self._save_version_in_file()
-
-        if self.modpack_temp_path is not None:
-            launcher = Launcher(
-                self.status, self.modpack_temp_path,
-                self.modpack_info, self.launcher_type
-            )
-            launcher.install_modpack()
-
         self._cleanup()
 
-    def install_selected(self):
-        self.status(f"Проверка существования сборки '{self.name}'")
-        if self._is_installed():
-            self.status('Проверка актуальности установленной сборки')
-            if self._is_actual():
-                self.status('Установленная версия сборки актуальна')
-                return
-            else:
-                self.status('Установленная версия сборки не актуальна')
-        self.status('Начата установка сборки')
-        self._full_install()
+    def download_selected(self):
+        self.status('Начато скачивание сборки')
+        self._full_download()
+        self.status(f"Скачивание сборки '{self.name}' завершено! Путь со сборкой: '{self.downloaded_pack}'")
         self.status(END_MESSAGE)
 
     # Для проверок функционала или дебага

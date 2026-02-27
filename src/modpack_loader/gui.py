@@ -5,9 +5,9 @@ from tkinter import ttk
 from queue import Queue
 from requests import HTTPError
 
-from config import INDEX_URL, END_MESSAGE
-from core import index_utils
-from core.modpack_utils import ModpackUtils
+from modpack_loader.config import INDEX_URL, END_MESSAGE
+from modpack_loader.core import index_utils
+from modpack_loader.core.modpack_utils import ModpackUtils
 
 class App(tk.Tk):
     def __init__(self):
@@ -32,11 +32,8 @@ class MainFrame(ttk.Frame):
 
         self.status_queue = Queue()
         self._checking_queue = False
-        self._installing = False
+        self._downloading = False
         self.index = None
-        # По умолчанию стоит TLauncher, пока не появится больше лаунчеров и
-        # отдельный выбор в GUI
-        self.launcher_type = 'tl'
 
         threading.Thread(target=self._load_index, daemon=True).start()
 
@@ -62,26 +59,27 @@ class MainFrame(ttk.Frame):
 
     def _set_status(self, status: str = ''):
         print(status)
-        self.status_label.config(text=status)
+        if status != END_MESSAGE:
+            self.status_label.config(text=status)
 
     def _on_modpack_changed(self, *args):
         if self.sel_modpack_name.get():
-            self.install_button.config(state='normal')
+            self.download_button.config(state='normal')
         else:
-            self.install_button.config(state='disabled')
+            self.download_button.config(state='disabled')
 
-    def _start_install(self):
-        if self._installing:
+    def _start_download(self):
+        if self._downloading:
             return
 
-        self._installing = True
-        self.install_button.config(state='disabled')
+        self._downloading = True
+        self.download_button.config(state='disabled')
 
         self._checking_queue = True
-        threading.Thread(target=self._installer, daemon=True).start()
+        threading.Thread(target=self._downloader, daemon=True).start()
         self._check_queue()
 
-    def _installer(self):
+    def _downloader(self):
         selected = self.sel_modpack_name.get() # Получение названия выбранной сборки
         if not selected:
             self._set_status('Выберите сборку!')
@@ -92,11 +90,10 @@ class MainFrame(ttk.Frame):
         if modpack_info:
             modpack_utils = ModpackUtils(
                 modpack_info,
-                status_callback=self.status_queue.put,
-                launcher_type=self.launcher_type
+                status_callback=self.status_queue.put
             )
-            # modpack_utils.install_selected()
-            modpack_utils.print_selected() # для проверок
+            modpack_utils.download_selected()
+            # modpack_utils.print_selected() # для проверок
         else:
             self._set_status(f"Информация о сборке '{selected}' пуста")
 
@@ -109,8 +106,8 @@ class MainFrame(ttk.Frame):
             self._set_status(message)
             if message == END_MESSAGE:
                 self._checking_queue = False
-                self._installing = False
-                self.install_button.config(state='normal')
+                self._downloading = False
+                self.download_button.config(state='normal')
 
         self.after(100, self._check_queue)
 
@@ -140,11 +137,8 @@ class MainFrame(ttk.Frame):
         self.modpack_combo.grid(row=1, column=0, sticky='ew')
 
         # Кнопка установки
-        self.install_button = ttk.Button(
-            self, text='Установить', state='disabled',
-            command=self._start_install
+        self.download_button = ttk.Button(
+            self, text='Скачать', state='disabled',
+            command=self._start_download
         )
-        self.install_button.grid(row=2, column=0, pady=15)
-
-app = App()
-app.mainloop()
+        self.download_button.grid(row=2, column=0, pady=15)
