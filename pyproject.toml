@@ -1,6 +1,6 @@
 [project]
-name = "modpack-loader"
-version = "0.1.0"
+name = "modpack-downloader"
+version = "0.1.1"
 description = "A small downloader for my Minecraft modpacks"
 readme = "README.md"
 requires-python = ">=3.13"
@@ -10,4 +10,4 @@ dependencies = [
     "tomli>=2.4.0",
 ]
 [project.scripts]
-modpack-loader = "modpack_loader.main:show"
+modpack-downloader = "modpack_downloader.main:show"

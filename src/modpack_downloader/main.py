@@ -1,4 +1,4 @@
-from modpack_loader.gui import App
+from modpack_downloader.gui import App
 
 def show():
     app = App()

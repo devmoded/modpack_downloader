@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Callable
 from platformdirs import user_downloads_path
 
-from modpack_loader.config import END_MESSAGE
+END_MESSAGE = 'Завершено'
 
 class ModpackUtils:
     def __init__(self, modpack_info: dict[str, str], status_callback: Callable):
@@ -34,7 +34,6 @@ class ModpackUtils:
             self.status('Скачивание сборки завершено')
             zip_bytes = io.BytesIO(response.content)
 
-            # Извлечение содержимого zip во временный каталог
             load_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
             self.downloaded_pack = self.downloads / f"{self.name}-{self.version}-{load_time}"
 
@@ -46,6 +45,7 @@ class ModpackUtils:
             except OSError as e:
                 self.status(f"Ошибка записи на диск: {e}")
             else:
+                # TODO под номером 1
                 github_subdir = next(dir for dir in self.downloaded_pack.iterdir() if dir.is_dir())
                 for item in github_subdir.iterdir():
                     shutil.move(item, self.downloaded_pack / item.name)

@@ -5,15 +5,15 @@ from tkinter import ttk
 from queue import Queue
 from requests import HTTPError
 
-from modpack_loader.config import INDEX_URL, END_MESSAGE
-from modpack_loader.core import index_utils
-from modpack_loader.core.modpack_utils import ModpackUtils
+from modpack_downloader.config import INDEX_URL
+from modpack_downloader.core import index_utils
+from modpack_downloader.core.modpack_utils import ModpackUtils, END_MESSAGE
 
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
 
-        self.title('Modpack Installer')
+        self.title('Modpack Downloader')
         self.geometry('320x370')
         self.resizable(False, False)
 
@@ -87,6 +87,7 @@ class MainFrame(ttk.Frame):
 
         self._set_status(f"Получение информации о сборке '{selected}'")
         modpack_info = index_utils.modpack_query(self.index, selected)
+
         if modpack_info:
             modpack_utils = ModpackUtils(
                 modpack_info,
@@ -102,12 +103,16 @@ class MainFrame(ttk.Frame):
             return
 
         while not self.status_queue.empty():
+            # Вывод текущего состояния
             message = self.status_queue.get()
             self._set_status(message)
+
             if message == END_MESSAGE:
+                # Завершение загрузки (Выход из очереди)
                 self._checking_queue = False
                 self._downloading = False
                 self.download_button.config(state='normal')
+                # print('debug: Выход из очереди')
 
         self.after(100, self._check_queue)
 
