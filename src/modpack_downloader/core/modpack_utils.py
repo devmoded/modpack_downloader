@@ -1,7 +1,7 @@
 import requests
 import zipfile
 import io
-import shutil
+import json
 
 from datetime import datetime
 from typing import Callable
@@ -18,6 +18,10 @@ class ModpackUtils:
         self.status = status_callback
 
         self.downloads = user_downloads_path()
+
+    def _save_info_in_file(self):
+        modpack_info = self.downloaded_pack / 'modpack_info.json'
+        modpack_info.write_text(json.dumps(self.modpack_info))
 
     def _download_and_extract(self):
         # Скачивание сборки и сохранение в оперативную память
@@ -45,12 +49,6 @@ class ModpackUtils:
             except OSError as e:
                 self.status(f"Ошибка записи на диск: {e}")
             else:
-                # TODO под номером 1
-                github_subdir = next(dir for dir in self.downloaded_pack.iterdir() if dir.is_dir())
-                for item in github_subdir.iterdir():
-                    shutil.move(item, self.downloaded_pack / item.name)
-                github_subdir.rmdir()
-
                 self.status(f"Cборка '{self.name}' успешно скачана и распакована в {self.downloaded_pack}")
 
     def _full_download(self):
@@ -59,6 +57,7 @@ class ModpackUtils:
     def download_selected(self):
         self.status('Начато скачивание сборки')
         self._full_download()
+        # self._save_info_in_file() # TODO: решить, нужно ли сохранение информации о сборке
         self.status(f"Скачивание сборки '{self.name}' завершено! Путь со сборкой: '{self.downloaded_pack}'")
         self.status(END_MESSAGE)
 
