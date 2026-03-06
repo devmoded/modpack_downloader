@@ -3,13 +3,13 @@ import threading
 import sys
 
 from tkinter import ttk
-from queue import Queue
+from queue import Queue, Empty
 from requests import HTTPError
 
 from modpack_downloader.config import INDEX_URL
 from modpack_downloader.core import index_utils
 from modpack_downloader.core import link_parser
-from modpack_downloader.core.modpack_utils import ModpackUtils, END_MESSAGE
+from modpack_downloader.core.modpack_utils import ModpackUtils
 
 class App(tk.Tk):
     def __init__(self):
@@ -34,6 +34,8 @@ class MainFrame(ttk.Frame):
 
         self.status_queue = Queue()
         self._checking_queue = False
+
+        self.download_queue = Queue()
         self._downloading = False
         self.index = None
 
@@ -82,8 +84,7 @@ class MainFrame(ttk.Frame):
 
     def _set_status(self, status: str = ''):
         print(status)
-        if status != END_MESSAGE:
-            self.status_label.config(text=status)
+        self.status_label.config(text=status)
 
     def _on_modpack_changed(self, *args):
         if self.sel_modpack_name.get():
@@ -114,29 +115,46 @@ class MainFrame(ttk.Frame):
         if modpack_info:
             modpack_utils = ModpackUtils(
                 modpack_info,
-                status_callback=self.status_queue.put
+                status_callback=self.status_queue.put,
+                download_status_callback=self.download_queue.put
             )
+            self._update_download_progress()
             modpack_utils.download_selected()
             # modpack_utils.print_selected() # для проверок
         else:
             self._set_status(f"Информация о сборке '{self.selected_modpack}' пуста")
 
+    def _update_download_progress(self):
+        try:
+            while True:
+                kind, val = self.download_queue.get_nowait()
+                if kind == 'max':
+                    self.progress_bar['maximum'] = val or 100
+                elif kind == 'progress':
+                    self.progress_bar['value'] = val
+                elif kind == 'done':
+                    return
+        except Empty:
+            pass
+        self.after(100, self._update_download_progress)
+
     def _check_queue(self):
         if not self._checking_queue:
             return
+        try:
+            while True:
+                kind, msg = self.status_queue.get_nowait()
 
-        while not self.status_queue.empty():
-            # Вывод текущего состояния
-            message = self.status_queue.get()
-            self._set_status(message)
-
-            if message == END_MESSAGE:
-                # Завершение загрузки (Выход из очереди)
-                self._checking_queue = False
-                self._downloading = False
-                self.download_button.config(state='normal')
-                # print('debug: Выход из очереди')
-
+                if kind == 'msg':
+                    self._set_status(msg)
+                elif kind == 'done':
+                    # Завершение загрузки (Выход из очереди)
+                    self._checking_queue = False
+                    self._downloading = False
+                    self.download_button.config(state='normal')
+                    return
+        except Empty:
+            pass
         self.after(100, self._check_queue)
 
     def create_widgets(self):
@@ -144,7 +162,7 @@ class MainFrame(ttk.Frame):
         self.status_label = ttk.Label(
             self, text='', foreground='gray', wraplength=210, justify='left'
         )
-        self.status_label.grid(row=3, column=0, sticky='n')
+        self.status_label.grid(row=4, column=0, sticky='n')
 
         self.title_label = ttk.Label(
             self,
@@ -163,6 +181,11 @@ class MainFrame(ttk.Frame):
 
         # - Список с доступными сборками
         self.modpack_combo.grid(row=1, column=0, sticky='ew')
+
+        self.progress_bar = ttk.Progressbar(
+            self, length=300, mode='determinate'
+        )
+        self.progress_bar.grid(row=3, column=0, pady=(0, 15))
 
         # Кнопка установки
         self.download_button = ttk.Button(
