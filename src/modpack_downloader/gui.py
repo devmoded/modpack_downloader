@@ -1,5 +1,6 @@
 import tkinter as tk
 import threading
+import sys
 
 from tkinter import ttk
 from queue import Queue
@@ -7,6 +8,7 @@ from requests import HTTPError
 
 from modpack_downloader.config import INDEX_URL
 from modpack_downloader.core import index_utils
+from modpack_downloader.core import link_parser
 from modpack_downloader.core.modpack_utils import ModpackUtils, END_MESSAGE
 
 class App(tk.Tk):
@@ -37,6 +39,26 @@ class MainFrame(ttk.Frame):
 
         threading.Thread(target=self._load_index, daemon=True).start()
 
+    def _check_uri(self):
+        if len(sys.argv) > 1:
+            uri = sys.argv[1]
+            try:
+                data = link_parser.parse_modpack_uri(uri)
+            except RuntimeError as e:
+                self._set_status(f"Ошибка: {e}")
+            else:
+                self.selected_modpack = data['name']
+                # self._start_download()
+                if self._downloading:
+                    return
+
+                self._downloading = True
+                self.download_button.config(state='disabled')
+
+                self._checking_queue = True
+                threading.Thread(target=self._downloader, daemon=True).start()
+                self._check_queue()
+
     def _load_index(self):
         try:
             self.after(0, self._set_status, 'Загрузка индекса сборок')
@@ -51,6 +73,7 @@ class MainFrame(ttk.Frame):
         if modpacks_names:
             self._set_status('Индекс успешно загружен. Выберите сборку')
             self.modpack_combo['values'] = modpacks_names
+            self._check_uri()
         else:
             self._set_status('Ошибка: полученный список с именами сборок пуст')
 
@@ -72,6 +95,11 @@ class MainFrame(ttk.Frame):
         if self._downloading:
             return
 
+        self.selected_modpack = self.sel_modpack_name.get() # Получение названия выбранной сборки
+        if not self.selected_modpack:
+            self._set_status('Выберите сборку!')
+            return
+
         self._downloading = True
         self.download_button.config(state='disabled')
 
@@ -80,13 +108,8 @@ class MainFrame(ttk.Frame):
         self._check_queue()
 
     def _downloader(self):
-        selected = self.sel_modpack_name.get() # Получение названия выбранной сборки
-        if not selected:
-            self._set_status('Выберите сборку!')
-            return
-
-        self._set_status(f"Получение информации о сборке '{selected}'")
-        modpack_info = index_utils.modpack_query(self.index, selected)
+        self._set_status(f"Получение информации о сборке '{self.selected_modpack}'")
+        modpack_info = index_utils.modpack_query(self.index, self.selected_modpack)
 
         if modpack_info:
             modpack_utils = ModpackUtils(
@@ -96,7 +119,7 @@ class MainFrame(ttk.Frame):
             modpack_utils.download_selected()
             # modpack_utils.print_selected() # для проверок
         else:
-            self._set_status(f"Информация о сборке '{selected}' пуста")
+            self._set_status(f"Информация о сборке '{self.selected_modpack}' пуста")
 
     def _check_queue(self):
         if not self._checking_queue:
