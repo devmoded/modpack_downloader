@@ -2,15 +2,16 @@ import requests
 import zipfile
 import json
 
-from datetime import datetime
+# from datetime import datetime
 from typing import Callable
-from platformdirs import user_downloads_path
+from pathlib import Path
 
 # END_MESSAGE = 'Завершено'
 
 class ModpackUtils:
     def __init__(
         self, modpack_info: dict[str, str],
+        modpack_path: Path,
         status_callback: Callable,
         download_status_callback: Callable
     ):
@@ -21,16 +22,18 @@ class ModpackUtils:
         self.status = status_callback
         self.dl_status = download_status_callback
 
-        self.downloads = user_downloads_path()
+        self.extract_path = modpack_path
 
     def _save_info_in_file(self):
         modpack_info = self.downloaded_pack / 'modpack_info.json'
         modpack_info.write_text(json.dumps(self.modpack_info))
 
     def _download_and_extract(self):
-        # Скачивание сборки и сохранение в оперативную память
-        load_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        tmp_path = self.downloads / f"{self.name}-{self.version}-{load_time}-temp.zip"
+        """Скачивание сборки и её распаковка"""
+        # load_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        # pack_name = f"{self.name}-{self.version}-{load_time}"
+        PACK_NAME = f"{self.name}-{self.version}"
+        tmp_path = self.extract_path / f"{PACK_NAME}-temp.zip"
 
         if not self.source:
             self.status(('msg', 'Поле \'source\' в информации о сборке не найдено'))
@@ -53,7 +56,7 @@ class ModpackUtils:
         else:
             self.dl_status(('done', ''))
             self.status(('msg', 'Скачивание сборки завершено'))
-            self.downloaded_pack = self.downloads / f"{self.name}-{self.version}-{load_time}"
+            self.downloaded_pack = self.extract_path / PACK_NAME
 
             try:
                 with zipfile.ZipFile(tmp_path, "r") as zf:
@@ -64,6 +67,7 @@ class ModpackUtils:
                 self.status(('msg', f"Ошибка записи на диск: {e}"))
             else:
                 tmp_path.unlink()
+                self._save_info_in_file()
                 self.status(('msg', f"Cборка '{self.name}' успешно скачана и распакована в {self.downloaded_pack}"))
 
     def _full_download(self):

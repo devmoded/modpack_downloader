@@ -3,8 +3,11 @@ import threading
 import sys
 
 from tkinter import ttk
+from tkinter import filedialog
 from queue import Queue, Empty
 from requests import HTTPError
+from pathlib import Path
+from platformdirs import user_data_path
 
 from modpack_downloader.config import INDEX_URL
 from modpack_downloader.core import index_utils
@@ -49,17 +52,8 @@ class MainFrame(ttk.Frame):
             except RuntimeError as e:
                 self._set_status(f"Ошибка: {e}")
             else:
-                self.selected_modpack = data['name']
-                # self._start_download()
-                if self._downloading:
-                    return
-
-                self._downloading = True
-                self.download_button.config(state='disabled')
-
-                self._checking_queue = True
-                threading.Thread(target=self._downloader, daemon=True).start()
-                self._check_queue()
+                self.sel_modpack_name.set(data['name'])
+                self._start_download()
 
     def _load_index(self):
         try:
@@ -86,11 +80,35 @@ class MainFrame(ttk.Frame):
         print(status)
         self.status_label.config(text=status)
 
+    def _select_modpack_path(self):
+        versions_path = Path.home()
+        if sys.platform.startswith('win'):
+            versions_path = user_data_path('.minecraft', roaming=True) / 'versions'
+        folder = filedialog.askdirectory(initialdir=versions_path, title='Выберите свою сборку')
+        self.modpack_path.set(folder)
+
     def _on_modpack_changed(self, *args):
         if self.sel_modpack_name.get():
             self.download_button.config(state='normal')
         else:
             self.download_button.config(state='disabled')
+
+    def _downloader(self):
+        self._set_status(f"Получение информации о сборке '{self.selected_modpack}'")
+        modpack_info = index_utils.modpack_query(self.index, self.selected_modpack)
+
+        if modpack_info:
+            modpack_utils = ModpackUtils(
+                modpack_info,
+                modpack_path=Path(self.modpack_path.get()),
+                status_callback=self.status_queue.put,
+                download_status_callback=self.download_queue.put
+            )
+            self._update_download_progress()
+            modpack_utils.download_selected()
+            # modpack_utils.print_selected() # для проверок
+        else:
+            self._set_status(f"Информация о сборке '{self.selected_modpack}' пуста")
 
     def _start_download(self):
         if self._downloading:
@@ -100,6 +118,10 @@ class MainFrame(ttk.Frame):
         if not self.selected_modpack:
             self._set_status('Выберите сборку!')
             return
+        self._select_modpack_path()
+        if not self.modpack_path.get():
+            self._set_status('Отменено пользователем')
+            return
 
         self._downloading = True
         self.download_button.config(state='disabled')
@@ -107,22 +129,6 @@ class MainFrame(ttk.Frame):
         self._checking_queue = True
         threading.Thread(target=self._downloader, daemon=True).start()
         self._check_queue()
-
-    def _downloader(self):
-        self._set_status(f"Получение информации о сборке '{self.selected_modpack}'")
-        modpack_info = index_utils.modpack_query(self.index, self.selected_modpack)
-
-        if modpack_info:
-            modpack_utils = ModpackUtils(
-                modpack_info,
-                status_callback=self.status_queue.put,
-                download_status_callback=self.download_queue.put
-            )
-            self._update_download_progress()
-            modpack_utils.download_selected()
-            # modpack_utils.print_selected() # для проверок
-        else:
-            self._set_status(f"Информация о сборке '{self.selected_modpack}' пуста")
 
     def _update_download_progress(self):
         try:
@@ -171,6 +177,7 @@ class MainFrame(ttk.Frame):
         )
         self.title_label.grid(row=0, column=0, sticky='n', pady=(0, 10))
 
+        self.modpack_path = tk.StringVar() # Путь до сборки
         self.sel_modpack_name = tk.StringVar() # Название выбранной сборки
         self.sel_modpack_name.trace_add('write', self._on_modpack_changed)
 
