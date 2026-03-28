@@ -5,7 +5,10 @@ import json
 # from datetime import datetime
 from typing import Callable
 from pathlib import Path
+from string import Template
 
+from modpack_downloader.config import MODPACK_NAME, INDEX_URL
+from modpack_downloader.scripts.pack_install import install as post_download
 # END_MESSAGE = 'Завершено'
 
 class ModpackUtils:
@@ -26,13 +29,17 @@ class ModpackUtils:
 
     def _save_info_in_file(self):
         modpack_info = self.downloaded_pack / 'modpack_info.json'
-        modpack_info.write_text(json.dumps(self.modpack_info))
+        modpack_info_data = {'index_url': INDEX_URL, **self.modpack_info}
+        modpack_info.write_text(json.dumps(modpack_info_data, indent=4))
 
     def _download_and_extract(self):
         """Скачивание сборки и её распаковка"""
         # load_time = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
         # pack_name = f"{self.name}-{self.version}-{load_time}"
-        PACK_NAME = f"{self.name}-{self.version}"
+
+        # Подстановка значений в имя файла сборки
+        PACK_NAME = Template(MODPACK_NAME).substitute(name=self.name, version=self.version)
+
         tmp_path = self.extract_path / f"{PACK_NAME}-temp.zip"
 
         if not self.source:
@@ -77,7 +84,16 @@ class ModpackUtils:
         self.status(('msg', 'Начато скачивание сборки'))
         self._full_download()
         # self._save_info_in_file() # TODO: решить, нужно ли сохранение информации о сборке
-        self.status(('msg', f"Скачивание сборки '{self.name}' завершено! Путь со сборкой: '{self.downloaded_pack}'"))
+        try:
+            self.status(('msg', f"Начало установки сборки '{self.name}'"))
+            post_download(self.downloaded_pack)
+        except FileNotFoundError as e:
+            self.status(('msg', f"Ошибка установки сборки: {e}"))
+        except Exception as e:
+            self.status(('msg', f"Неизвестная ошибка во время установки: {e}"))
+        else:
+            self.status(('msg', f"Установка сборки '{self.name}' успешно завершена!"))
+        self.status(('msg', f"Скачивание и установка сборки '{self.name}' завершена! Путь со сборкой: '{self.downloaded_pack}'"))
         self.status(('done', ''))
 
     # Для проверок функционала или дебага
