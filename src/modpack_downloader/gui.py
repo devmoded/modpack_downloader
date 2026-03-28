@@ -83,7 +83,7 @@ class MainFrame(ttk.Frame):
     def _select_modpack_path(self):
         versions_path = Path.home()
         if sys.platform.startswith('win'):
-            versions_path = user_data_path('.minecraft', roaming=True) / 'versions'
+            versions_path = user_data_path(roaming=True) / '.minecraft' / 'versions'
         folder = filedialog.askdirectory(initialdir=versions_path, title='Выберите свою сборку')
         self.modpack_path.set(folder)
 
