@@ -1,6 +1,6 @@
 [Setup]
 AppName=Modpack Downloader
-AppVersion=0.1.3
+AppVersion=0.1.4
 AppId=modpack-downloader
 DefaultDirName={autopf}\ModpackDownloader
 DefaultGroupName=Modpack Downloader
