@@ -45,4 +45,8 @@ def modpack_query(
             for modpack in modpacks:
                 if modpack.get('name') == name:
                     return modpack
+                else:
+                    raise RuntimeError(f"Сборка с именем {name} не найдена")
+        else:
+            raise RuntimeError('Индекс пуст')
     return {}
