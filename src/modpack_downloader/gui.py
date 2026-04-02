@@ -27,7 +27,7 @@ class App(tk.Tk):
 
 class MainFrame(ttk.Frame):
     def __init__(self, parent):
-        super().__init__(parent, padding=45)
+        super().__init__(parent, padding=(45, 25))
 
         self.columnconfigure(0, weight=1)
         self.create_widgets()
@@ -47,7 +47,7 @@ class MainFrame(ttk.Frame):
             API.load_index()
             self.modpack_combo['values'] = API.modpacks_names
         except RuntimeError as e:
-            API.set_status(('done', f"Не удалось загрузить индекс. Ошибка: {e}"))
+            API.set_status(('err', f"Не удалось загрузить индекс. Ошибка: {e}"))
         else:
             uri_data = backend.check_uri()
             if uri_data is not None:
@@ -84,7 +84,7 @@ class MainFrame(ttk.Frame):
         # Выбор пути для загрузки и установки сборки
         self._select_modpack_path()
         if not self.selected_modpack_path.get():
-            API.set_status(('done', 'Отменено пользователем'))
+            API.set_status(('msg', 'Отменено пользователем'))
             return
 
         API.change_downloading_state(True)
@@ -104,6 +104,10 @@ class MainFrame(ttk.Frame):
                     self.progress_bar['maximum'] = val or 100
                 elif state == 'progress':
                     self.progress_bar['value'] = val
+
+                    # Сделать показ процентов загрузки получше чем этот кошмар
+                    # progress = (val/self.progress_bar['maximum'])*100
+                    # API.set_status(('msg', f"Загрузка: {round(progress, 2)}%"))
                 elif state == 'done':
                     return
         except Empty:
@@ -111,18 +115,20 @@ class MainFrame(ttk.Frame):
         self.after(100, self._update_download_progress_bar)
 
     def create_widgets(self):
-        # Поле с состоянием работы программы
-        self.status_label = ttk.Label(
-            self, text='', foreground='gray', wraplength=210, justify='left'
+        # Поле с версией программы
+        self.version_label = ttk.Label(
+            self,
+            text=f"Версия: {API.program_version}",
+            font=('Segoe UI', 8)
         )
-        self.status_label.grid(row=4, column=0, sticky='n')
+        self.version_label.grid(row=0, column=0, sticky='n', pady=(0, 5))
 
         self.title_label = ttk.Label(
             self,
             text='Выбор сборки',
             font=('Segoe UI', 14)
         )
-        self.title_label.grid(row=0, column=0, sticky='n', pady=(0, 10))
+        self.title_label.grid(row=1, column=0, sticky='n', pady=(0, 10))
 
         self.selected_modpack_path = tk.StringVar() # Путь до сборки
         self.selected_modpack_name = tk.StringVar() # Название выбранной сборки
@@ -139,17 +145,23 @@ class MainFrame(ttk.Frame):
         )
 
         # - Список с доступными сборками
-        self.modpack_combo.grid(row=1, column=0, sticky='ew')
-
-        # Прогресс бар
-        self.progress_bar = ttk.Progressbar(
-            self, length=300, mode='determinate'
-        )
-        self.progress_bar.grid(row=3, column=0, pady=(0, 15))
+        self.modpack_combo.grid(row=2, column=0, sticky='ew')
 
         # Кнопка загрузки
         self.download_button = ttk.Button(
             self, text='Скачать', state='disabled',
             command=self._start_download
         )
-        self.download_button.grid(row=2, column=0, pady=15)
+        self.download_button.grid(row=3, column=0, pady=15)
+
+        # Прогресс бар
+        self.progress_bar = ttk.Progressbar(
+            self, length=300, mode='determinate'
+        )
+        self.progress_bar.grid(row=4, column=0, pady=(0, 15))
+
+        # Поле с состоянием работы программы
+        self.status_label = ttk.Label(
+            self, text='', foreground='gray', wraplength=210, justify='left'
+        )
+        self.status_label.grid(row=5, column=0, sticky='n')

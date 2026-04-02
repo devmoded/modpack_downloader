@@ -13,7 +13,7 @@ def check_uri() -> dict[str, str] | None:
         try:
             data = link_parser.parse_modpack_uri(uri)
         except RuntimeError as e:
-            API.set_status(('msg', f"Ошибка: {e}"))
+            API.set_status(('err', f"Ошибка: {e}"))
         else:
             return data
 
@@ -34,6 +34,6 @@ def start_modpack_download(
         ).start()
 
     except RuntimeError as e:
-        API.set_status(('done', f"Не удалось скачать сборку. Ошибка: {e}"))
+        API.set_status(('err', f"Не удалось скачать сборку. Ошибка: {e}"))
         API.change_downloading_state(False)
     # modpack_utils.print_selected() # для проверок

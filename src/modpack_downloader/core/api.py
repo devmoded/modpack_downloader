@@ -7,7 +7,7 @@ from modpack_downloader.core import index_utils
 
 class Api:
     def __init__(self):
-        pass
+        self.program_version = '0.2.1'
 
     def init_in_gui(self, root_after: Callable,
         button_state_changer: Callable,
@@ -24,10 +24,13 @@ class Api:
                     state, msg = self.status_queue.get_nowait()
 
                     if state == 'msg':
+                        self.status_print(msg)
                         print(f"INFO: {msg}")
-                        self.status_print(msg)
+                    elif state == 'err':
+                        self.status_print(f"❌️ {msg}")
+                        print(f"ERROR: {msg}")
                     elif state == 'done':
-                        self.status_print(msg)
+                        self.status_print(f"✅️ {msg}")
                         print(f"DONE: {msg}")
                         print('DEBUG: Выход из проверки статуса')
                         # Завершение загрузки (Выход из очереди)
@@ -46,7 +49,7 @@ class Api:
     def set_status(self, status: tuple[str, str]):
         """
         Ожидает кортеж `status`состоящий из условных:
-        - `state`: 'msg' или 'done'
+        - `state`: 'msg', 'err' или 'done'
         - `msg`: сообщение
         """
         if self.status_queue is not None:
