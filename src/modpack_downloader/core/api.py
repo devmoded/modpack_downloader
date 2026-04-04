@@ -24,11 +24,11 @@ class Api:
         self._modpack_content_path = path
         self._modpack_content_path.expanduser().resolve()
 
-    def get_modpack_content_path(self) -> Path:
+    def get_modpack_content_path(self, for_unpack: bool = False) -> Path:
         if self._modpack_content_path is None:
             raise RuntimeError('\'API.modpack_content_path\' не назначен')
 
-        if not self._modpack_content_path.exists():
+        if not self._modpack_content_path.exists() and not for_unpack:
             raise FileNotFoundError(f"{self._modpack_content_path} не существует!")
 
         return self._modpack_content_path

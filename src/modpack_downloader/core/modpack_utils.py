@@ -64,7 +64,7 @@ class ModpackUtils:
             API.set_status(('msg', 'Скачивание сборки завершено'))
             API.set_modpack_content_path(self.extract_path / PACK_NAME)
 
-            self.modpack_content = API.get_modpack_content_path()
+            self.modpack_content = API.get_modpack_content_path(for_unpack=True)
 
             try:
                 with zipfile.ZipFile(tmp_path, "r") as zf:
@@ -89,13 +89,15 @@ class ModpackUtils:
             API.set_status(('msg', f"Начало установки сборки '{self.name}'"))
             post_download()
         except FileNotFoundError as e:
-            raise RuntimeError(f"Ошибка установки сборки: {e}")
-        except Exception as e:
-            raise RuntimeError(f"Неизвестная ошибка во время установки: {e}")
+            API.set_status(('err', f"Ошибка установки сборки: {e}"))
+        except RuntimeError as e:
+            API.set_status(('err', f"Ошибка во время выполнения установки: {e}"))
+        # except Exception as e:
+        #     API.set_status(('err', f"Неизвестная ошибка во время установки: {e}"))
         else:
             API.set_status(('msg', f"Установка сборки '{self.name}' успешно завершена!"))
+            API.set_status(('done', f"Скачивание и установка сборки '{self.name}' завершена! Путь со сборкой: '{self.modpack_content}'"))
         API.change_downloading_state(False)
-        API.set_status(('done', f"Скачивание и установка сборки '{self.name}' завершена! Путь со сборкой: '{self.modpack_content}'"))
 
     # Для проверок функционала или дебага
     def print_selected(self):
