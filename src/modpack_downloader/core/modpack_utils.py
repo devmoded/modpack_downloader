@@ -28,7 +28,7 @@ class ModpackUtils:
         self.extract_path = modpack_path
 
     def _save_info_in_file(self):
-        modpack_info = self.downloaded_pack / 'modpack_info.json'
+        modpack_info = self.modpack_content / 'modpack_info.json'
         modpack_info_data = {'index_url': INDEX_URL, **self.modpack_info}
         modpack_info.write_text(json.dumps(modpack_info_data, indent=4))
 
@@ -62,11 +62,13 @@ class ModpackUtils:
         else:
             self.dl_status(('done', ''))
             API.set_status(('msg', 'Скачивание сборки завершено'))
-            self.downloaded_pack = self.extract_path / PACK_NAME
+            API.set_modpack_content_path(self.extract_path / PACK_NAME)
+
+            self.modpack_content = API.get_modpack_content_path()
 
             try:
                 with zipfile.ZipFile(tmp_path, "r") as zf:
-                    zf.extractall(self.downloaded_pack)
+                    zf.extractall(self.modpack_content)
             except zipfile.BadZipFile:
                 raise RuntimeError("Ошибка: архив повреждён")
             except OSError as e:
@@ -74,7 +76,7 @@ class ModpackUtils:
             else:
                 tmp_path.unlink()
                 self._save_info_in_file()
-                API.set_status(('msg', f"Cборка '{self.name}' успешно скачана и распакована в {self.downloaded_pack}"))
+                API.set_status(('msg', f"Cборка '{self.name}' успешно скачана и распакована в {self.modpack_content}"))
 
     def _full_download(self):
         self._download_and_extract()
@@ -85,7 +87,7 @@ class ModpackUtils:
         # self._save_info_in_file() # TODO: решить, нужно ли сохранение информации о сборке
         try:
             API.set_status(('msg', f"Начало установки сборки '{self.name}'"))
-            post_download(self.downloaded_pack)
+            post_download()
         except FileNotFoundError as e:
             raise RuntimeError(f"Ошибка установки сборки: {e}")
         except Exception as e:
@@ -93,7 +95,7 @@ class ModpackUtils:
         else:
             API.set_status(('msg', f"Установка сборки '{self.name}' успешно завершена!"))
         API.change_downloading_state(False)
-        API.set_status(('done', f"Скачивание и установка сборки '{self.name}' завершена! Путь со сборкой: '{self.downloaded_pack}'"))
+        API.set_status(('done', f"Скачивание и установка сборки '{self.name}' завершена! Путь со сборкой: '{self.modpack_content}'"))
 
     # Для проверок функционала или дебага
     def print_selected(self):

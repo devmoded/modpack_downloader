@@ -1,21 +1,37 @@
 from typing import Callable
 from queue import Queue, Empty
 from requests import HTTPError
+from pathlib import Path
 
 from modpack_downloader.config import INDEX_URL
 from modpack_downloader.core import index_utils
 
 class Api:
     def __init__(self):
-        self.program_version = '0.2.1'
+        self.program_version = '0.2.2'
+        self._modpack_content_path: Path | None = None
 
-    def init_in_gui(self, root_after: Callable,
+    def init_in_gui(self,
+        root_after: Callable,
         button_state_changer: Callable,
         status_print: Callable
     ):
         self.root_after = root_after
         self.change_downloading_state = button_state_changer
         self.status_print = status_print
+
+    def set_modpack_content_path(self, path: Path):
+        self._modpack_content_path = path
+        self._modpack_content_path.expanduser().resolve()
+
+    def get_modpack_content_path(self) -> Path:
+        if self._modpack_content_path is None:
+            raise RuntimeError('\'API.modpack_content_path\' не назначен')
+
+        if not self._modpack_content_path.exists():
+            raise FileNotFoundError(f"{self._modpack_content_path} не существует!")
+
+        return self._modpack_content_path
 
     def _check_status(self):
         if self.status_queue is not None:
