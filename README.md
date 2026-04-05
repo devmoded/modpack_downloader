@@ -23,4 +23,5 @@
   - `platformdirs` >= 4.6.0
   - `pyyaml` >= 6.0.3
   - `requests` >= 2.32.5
+  - `rich` >= 14.3.3
   - `tomli` >= 2.4.0

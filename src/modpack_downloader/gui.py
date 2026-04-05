@@ -54,9 +54,9 @@ class MainFrame(ttk.Frame):
                 self.selected_modpack_name.set(uri_data['name'])
                 self._start_download()
 
-    def _set_status(self, status: str):
+    def _set_status(self, status: str, fg: str = 'gray'):
         """Устанавливает текст статуса в надпись."""
-        self.status_label.config(text=status)
+        self.status_label.config(text=status, foreground=fg)
 
     def _change_downloading_state(self, is_downloading: bool):
         """Изменяет состояние кнопки загрузки в зависимости от состояния скачивания."""

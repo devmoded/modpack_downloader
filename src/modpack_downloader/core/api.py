@@ -2,6 +2,7 @@ from typing import Callable
 from queue import Queue, Empty
 from requests import HTTPError
 from pathlib import Path
+from rich import print
 
 from modpack_downloader.config import INDEX_URL
 from modpack_downloader.core import index_utils
@@ -41,13 +42,13 @@ class Api:
 
                     if state == 'msg':
                         self.status_print(msg)
-                        print(f"INFO: {msg}")
+                        print(f"[blue]INFO:[/blue] {msg}")
                     elif state == 'err':
-                        self.status_print(f"❌️ {msg}")
-                        print(f"ERROR: {msg}")
+                        self.status_print(f"❌️ {msg}", 'red')
+                        print(f"[red]ERROR: {msg}[/red]")
                     elif state == 'done':
-                        self.status_print(f"✅️ {msg}")
-                        print(f"DONE: {msg}")
+                        self.status_print(f"✅️ {msg}", 'green')
+                        print(f"[green]DONE: {msg}[/green]")
                         print('DEBUG: Выход из проверки статуса')
                         # Завершение загрузки (Выход из очереди)
                         # self._stop_status_checking()

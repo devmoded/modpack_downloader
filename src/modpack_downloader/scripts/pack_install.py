@@ -43,6 +43,9 @@ def install():
             _install_mods_via_copy(force=True)
         elif main_mods == 'from-list':
             _install_mods(force=False)
+        elif main_mods == 'force-from-list':
+            _install_mods(force=True)
+
     main_resourcepacks = main_install.get('resourcepacks')
     if main_resourcepacks is not None:
         if main_resourcepacks == 'merge':
@@ -60,7 +63,13 @@ def _install_mods(force: bool = False):
     modpack_content = API.get_modpack_content_path()
     modpack_root = modpack_content.parent
     mods_path = modpack_root / 'mods'
-    mods_path.mkdir(exist_ok=True, parents=True)
+
+    if mods_path.exists() and force:
+        shutil.rmtree(mods_path)
+    elif not mods_path.exists():
+        mods_path.mkdir(exist_ok=True, parents=True)
+    else:
+        API.set_status(('msg', f"Каталог {mods_path} существует, идёт \"мягкая\" установка дополнительных модов"))
 
     mods_list = _load_mods_list()
     loader= mods_list.get('loader')
@@ -76,24 +85,31 @@ def _install_mods(force: bool = False):
 
     for mod in mods:
         if isinstance(mod, dict) and isinstance(loader, str) and isinstance(mc_version, str):
-            if mod['url'].startswith('https://modrinth.com'):
-                API.set_status(('msg', f"Установка мода с Modrinth: {mod['name']}, {mod['version']}"))
+            try:
+                mod_url = mod.get('url')
+                if mod_url is None:
+                    raise RuntimeError(f"У мода {mod['name']} отсутствует поле 'url'")
+            except RuntimeError as e:
+                API.set_status(('err', f"Пропускаю мод: {e}"))
+            else:
+                if mod_url.startswith('https://modrinth.com'):
+                    API.set_status(('msg', f"Установка мода с Modrinth: {mod['name']}, {mod['version']}"))
 
-                try:
-                    download_url = parse_modrinth(loader, mc_version, mod['url'], mod['version'])
-                except RuntimeError as e:
-                    API.set_status(('err', f"Ошибка при установке мода с Modrinth: {mod['name']}: {e}"))
-                else:
-                    _download_file(download_url, mods_path, force)
-            elif mod['url'].startswith('local:'):
-                API.set_status(('msg', f"Копирование локального мода: {mod['name']}, {mod['version']}"))
+                    try:
+                        download_url = parse_modrinth(loader, mc_version, mod['url'], mod['version'])
+                    except RuntimeError as e:
+                        API.set_status(('err', f"Ошибка при установке мода с Modrinth: {mod['name']}: {e}"))
+                    else:
+                        _download_file(download_url, mods_path, force)
+                elif mod_url.startswith('local:'):
+                    API.set_status(('msg', f"Копирование локального мода: {mod['name']}, {mod['version']}"))
 
-                local_mod_path = modpack_content / mod['url'].replace('local:', '')
-                mod_path = modpack_root / mods_path / local_mod_path.name
-                if mod_path.exists() and not force:
-                    API.set_status(('msg', f"Файл {mod_path} существует, пропускаю"))
-                else:
-                    shutil.move(local_mod_path, mod_path)
+                    local_mod_path = modpack_content / mod['url'].replace('local:', '')
+                    mod_path = modpack_root / mods_path / local_mod_path.name
+                    if mod_path.exists():
+                        API.set_status(('msg', f"Файл {mod_path} существует, пропускаю"))
+                    else:
+                        shutil.move(local_mod_path, mod_path)
 
 def _install_mods_via_copy(force: bool = False):
     modpack_content = API.get_modpack_content_path()
@@ -153,3 +169,5 @@ def _download_file(url: str, dst: Path, force: bool = False):
                             f.write(chunk)
         except requests.HTTPError as e:
             API.set_status(('err', f"Ошибка при скачивании файла {url}: {e}"))
+        except requests.ReadTimeout as e:
+            API.set_status(('err', f"Ошибка при скачивании файла (время ожидания ответа сервера истекло) {url}: {e}"))
