@@ -1,6 +1,6 @@
 import requests
 
-def parse_modrinth(loader: str, mc_version: str, url: str, version: str) -> str:
+def parse_modrinth_api(loader: str, mc_version: str, url: str, version: str) -> str:
     project_id = url.replace('https://modrinth.com/mod/', '')
 
     url = f"https://api.modrinth.com/v2/project/{project_id}/version"
@@ -10,12 +10,6 @@ def parse_modrinth(loader: str, mc_version: str, url: str, version: str) -> str:
         'game_versions': [mc_version],
         'include_changelog': 'false',
     }
-
-    # params = {
-    #     'loaders': 'fabric',
-    #     'game_versions': '1.21.1',
-    #     'include_changelog': 'false',
-    # }
 
     versions = requests.get(url, params=params, timeout=20).json()
 

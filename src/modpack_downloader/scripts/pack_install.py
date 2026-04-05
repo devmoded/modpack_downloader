@@ -7,7 +7,7 @@ from pathlib import Path
 from urllib.parse import urlparse, unquote
 
 from modpack_downloader.core.api import API
-from modpack_downloader.scripts.platforms_api import parse_modrinth
+from modpack_downloader.scripts.platforms_api import parse_modrinth_api
 
 def install():
     modpack_content = API.get_modpack_content_path()
@@ -96,11 +96,14 @@ def _install_mods(force: bool = False):
                     API.set_status(('msg', f"Установка мода с Modrinth: {mod['name']}, {mod['version']}"))
 
                     try:
-                        download_url = parse_modrinth(loader, mc_version, mod['url'], mod['version'])
+                        download_url = parse_modrinth_api(loader, mc_version, mod_url, mod['version'])
                     except RuntimeError as e:
                         API.set_status(('err', f"Ошибка при установке мода с Modrinth: {mod['name']}: {e}"))
                     else:
                         _download_file(download_url, mods_path, force)
+                elif mod_url.startswith('https://cdn.modrinth.com'):
+                    API.set_status(('msg', f"Установка мода с Modrinth: {mod['name']}, {mod['version']}"))
+                    _download_file(mod_url, mods_path, force)
                 elif mod_url.startswith('local:'):
                     API.set_status(('msg', f"Копирование локального мода: {mod['name']}, {mod['version']}"))
 
