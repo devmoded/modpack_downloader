@@ -3,10 +3,14 @@ from pathlib import Path
 from sys import platform
 from platformdirs import user_data_path
 
+export_name = 'modpack-downloader'
+if platform.startswith('linux'):
+    export_name = 'modpack-downloader-linux'
+
 print('Сборка исполняемого файла')
 subprocess.run([
     'pyinstaller', '--noconfirm', '--onefile', '--windowed',
-    '--name', 'modpack-downloader',
+    '--name', export_name,
     '--paths', Path('src'),
     Path('src/modpack_downloader/main.py')
 ])
