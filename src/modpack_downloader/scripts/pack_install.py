@@ -66,6 +66,7 @@ def _install_mods(force: bool = False):
 
     if mods_path.exists() and force:
         shutil.rmtree(mods_path)
+        mods_path.mkdir(exist_ok=True, parents=True)
     elif not mods_path.exists():
         mods_path.mkdir(exist_ok=True, parents=True)
     else:
